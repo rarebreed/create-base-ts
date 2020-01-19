@@ -9,7 +9,7 @@ license, src and test directories, and a basic tsconfig.json file.
 You can run it like this:
 
 ```bash
-npm init base-ts <name-of-project>
+npm init create-base-ts <name-of-project>
 ```
 
 After which you should see the following:
@@ -18,6 +18,7 @@ After which you should see the following:
 name-of-project
 - /src
 - /test
+- /dist
 - package.json
 - tsconfig.json
 - LICENSE
@@ -28,8 +29,7 @@ name-of-project
 There are a couple of options that you can pass to create-base-ts to make it more useful.
 
 - -r, --react will also add react, react-dom and @types definitions with webpack and dependencies
-- -t, --test \<Jest | mocha | jasmine\> The default is to use AVA. This will add testing library to package.json instead
+- -p, --parcel will use parcel (Only useful if -r also selected.  Uses webpack by default)
 - -d, --deps comma separated list of additional dependencies
 - --dev-deps comma separated list of dev-dependencies
-- -o, --ts-opt key=value to be set in tsconfig.  Can be called multiple times
-- --license <MIT, BSD-2, BSD-3, Eclipse> Defaults to Apache-2.0
+- --license <MIT, BSD-2, BSD-3> Defaults to Apache-2.0
