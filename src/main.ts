@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import program from "commander";
 import { parseArgs, start } from "./lib";
+import { parse } from "querystring";
 
 const validLicense = new Set(["BSD-2", "BSD-3", "MIT", "Eclipse"]);
 
@@ -29,5 +30,7 @@ let args = program
   .option("--dev-dep <dev>", "Comma separated list of extra dev dependencies. Can be used multiple times", collect, [])
   .option("-l, --license <license>", "License to use (defaults to Apache-2.0 [BSD-2, BSD-3, MIT, Eclipse]", validateLicense)
   .parse(process.argv);
+
+console.log(parseArgs(args))
 
 start(args);

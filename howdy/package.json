@@ -1,0 +1,23 @@
+{
+  "name": "howdy",
+  "repository": "",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Sean Toner",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "ts-lint": "4.5.1",
+    "ava": "3.0.0",
+    "typescript": "3.7.5",
+    "@types/config": "0.0.36",
+    "@types/node": "13.1.8"
+  },
+  "dependencies": {
+    "ramda": "0.26.1"
+  }
+}

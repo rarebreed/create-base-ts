@@ -130,16 +130,14 @@ type DepType = keyof Package;
  * @param deps 
  */
 export const setDependency = (type: DepType, deps: string[]) => (pkg: Package = template) => {
-  let parsedDeps = deps.reduce((acc, n) => {
-    acc = acc + n + " ";
-    return acc;
-  }, "");
-  let cmd = execSync(`npm install --dry-run ${parsedDeps}`);
-  cmd.toString()
+  console.log(`Adding ${deps} to ${type}`);
+  let cmd = spawnSync("npm", ["install", "--dry-run", ...deps]);
+
+  cmd.stdout.toString()
     .split("\n")
     .filter((line) => line.startsWith("+"))
     .map(line => {
-      let patt = /(?<name>\w+([-_]?\w*)*)@(?<version>(\d+\.?)+)/m;
+      let patt = /(?<name>(@types\/)?\w+([-_]?\w*)*)@(?<version>(\d+\.?)+)/m;
       let matched = line.match(patt);
       if (matched) {
         if (matched.groups) return matched.groups
@@ -197,6 +195,11 @@ const setPackageJson = (opts: Options, pkgjson: Package) => {
   pkg = setLicense(opts.license)(pkg);
   pkg.name = opts.args[0];
   pkg.author = fullName;
+
+  if (opts.dep)
+    pkg = setDependency("dependencies", opts.dep)(pkg);
+  if (opts.devDep)
+    pkg = setDependency("devDependencies", opts.devDep)(pkg);
 
   return pkg
 }
