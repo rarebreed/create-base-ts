@@ -1,0 +1,27 @@
+{
+  "name": "@khadga/create-base-ts",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "version": "1.0.0",
+  "bin": "./dist/main.js",
+  "description": "",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^13.1.8",
+    "typescript": "^3.7.5"
+  },
+  "dependencies": {
+    "commander": "^4.1.0"
+  },
+  "types": "./dist/main.d.ts"
+}
