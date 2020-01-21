@@ -13,8 +13,8 @@
     "prepublishOnly": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["scaffold", "typescript"],
+  "author": "Sean Toner",
   "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "^13.1.8",

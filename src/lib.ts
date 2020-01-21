@@ -58,6 +58,9 @@ export interface Options {
   devDep: string[],
   react: boolean,
   parcel: boolean,
+  mobx: boolean,
+  esVersion: "ES3" | "ES5" | "ES2015" | "ES2016" | "ES2017" | "ES2018" | "ES2019" | "ESNext",
+  dryRun: boolean,
   license: "Apache-2.0" | "BSD-2-Clause" | "BSD-3-Clause" | "MIT",
   licenseFn: (year: number, name: string) => string,
   args: string[]
@@ -74,6 +77,9 @@ export const parseArgs = (args: Command) => {
     devDep: [],
     react: false,
     parcel: false,
+    mobx: false,
+    esVersion: "ES2015",
+    dryRun: false,
     license: "Apache-2.0",
     licenseFn: licenses.APACHE_LICENSE,
     args: args.args
@@ -116,6 +122,14 @@ export const parseArgs = (args: Command) => {
 
   if (args.parcel) {
     opts.parcel = true
+  }
+
+  if (args.es) {
+    opts.esVersion = args.es;
+  }
+
+  if (args.dryRun) {
+    opts.dryRun = true;
   }
 
   return opts;
@@ -175,30 +189,40 @@ export const setLicense = (license: string) => (pkg: Package) => {
 export const setWeb = (opts: Options) => (pkg: Package) => {
   if (!opts.react) {
     return pkg;
-  } else {
-    pkg = setDependency("dependencies", ["react", "react-dom"])(pkg);
   }
 
+  let deps = ["react", "react-dom", "react-router"];
+  let devDeps = ["@types/react", "@types/react-dom", "@types/react-router"];
+
   if (opts.parcel) {
-    return setDependency("devDependencies", ["parcel"])(pkg)
+    devDeps = devDeps.concat(["parcel"])
   } else {
-    return setDependency("devDependencies", ["webpack"])(pkg)
+    devDeps = devDeps.concat(["webpack"])
   }
+
+  if (opts.mobx) {
+    deps = deps.concat(["mobx"]);
+  } else {
+    deps = deps.concat(["redux"])
+  }
+  pkg = setDependency("dependencies", deps)(pkg);
+  pkg = setDependency("devDependencies", devDeps)(pkg);
+  return pkg
 }
 
 /**
  * This function generates the package.json based on the options passed in
  */
 const setPackageJson = (opts: Options, pkgjson: Package) => {
-  let pkg = setDependency("devDependencies", ["typescript", "ts-lint", "ava"])(pkgjson);
+  let pkg = setDependency("devDependencies", ["typescript", "tslint", "ava"])(pkgjson);
   pkg = setWeb(opts)(pkg);
   pkg = setLicense(opts.license)(pkg);
   pkg.name = opts.args[0];
   pkg.author = fullName;
 
-  if (opts.dep)
+  if (opts.dep.length > 0)
     pkg = setDependency("dependencies", opts.dep)(pkg);
-  if (opts.devDep)
+  if (opts.devDep.length > 0)
     pkg = setDependency("devDependencies", opts.devDep)(pkg);
 
   return pkg
@@ -247,6 +271,10 @@ const writeLicense = (project: string, fn: (year: number, name: string) => strin
   writer("LICENSE", license);
 }
 
+const setTSConfig = (opts: Options) => {
+  tsconfig.compilerConfig.target = opts.esVersion;
+}
+
 /**
  * This is the "main" function that scaffolds the project
  * 
@@ -258,6 +286,11 @@ export const start = (args: Command, pkgjson: Package = template) => {
 
   console.log("Setting up package.json file");
   let pkg = setPackageJson(opts, pkgjson);
+
+  if (opts.dryRun) {
+    console.log(JSON.stringify(pkg, null, 2));
+    return;
+  }
 
   console.log("Creating folders")
   fs.mkdirSync(pkg.name);
