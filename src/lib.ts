@@ -256,13 +256,29 @@ export const setWeb = (opts: Options) => (pkg: Package) => {
   }
 
   let deps = ["react", "react-dom", "react-router"];
-  let devDeps = ["@types/react", "@types/react-dom", "@types/react-router"];
-  let scripts: [string, string][];
+  let devDeps = [
+    "@types/react",
+    "@types/react-dom",
+    "@types/react-router",
+    "bulma"
+  ];
 
   if (opts.parcel) {
     devDeps = devDeps.concat(["parcel-bundler"]);
   } else {
-    devDeps = devDeps.concat(["webpack", "webpack-cli", "webpack-dev-server", "copy-webpack-plugin"]);
+    // Ughh, webpack sucks
+    devDeps = devDeps.concat([
+      "webpack",
+      "webpack-cli",
+      "webpack-dev-server",
+      "copy-webpack-plugin",
+      "css-loader",
+      "extract-text-webpack-plugin@next",
+      "mini-css-extract-plugin",
+      "node-sass",
+      "style-loader",
+      "ts-loader"
+    ]);
   }
 
   if (opts.mobx) {
@@ -288,13 +304,15 @@ const setPackageJson = (opts: Options, pkgjson: Package) => {
 
     if (opts.parcel) {
       pkgjson.scripts = Object.assign({
-        build: "parcel .//index.html",
-        serve: "parcel build ./dist/index.html"
+        build: "parcel ./build/index.html",
+        serve: "parcel build ./build/index.html",
+        clean: "rimraf dist build"
       }, pkgjson.scripts)
-    } else {
+    } else if (opts.react) {
       pkgjson.scripts = Object.assign({
         build: "tsc && webpack --mode production",
-        serve: "tsc && webpack-dev-server --mode development --open"
+        serve: "tsc && webpack-dev-server --mode development --open",
+        clean: "rimraf dist build"
       }, pkgjson.scripts)
     }
 
@@ -302,7 +320,7 @@ const setPackageJson = (opts: Options, pkgjson: Package) => {
     writer(`package.json`, pkgjson);
   }
 
-  let pkg = setDep("devDependencies", ["typescript", "tslint", "ava"], opts)(pkgjson);
+  let pkg = setDep("devDependencies", ["typescript", "tslint", "ava", "rimraf"], opts)(pkgjson);
   pkg.name = opts.args[0];
   pkg.author = fullName;
   pkg = setWeb(opts)(pkg);
