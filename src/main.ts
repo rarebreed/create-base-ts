@@ -34,6 +34,8 @@ let args = program
   .option("--dry-run", "Only show the package.json it would produce, do not write anything")
   .parse(process.argv);
 
+//console.log(args);
+
 console.log(parseArgs(args))
 
 start(args);

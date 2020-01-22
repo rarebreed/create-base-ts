@@ -1,8 +1,9 @@
 import fs from "fs";
 import { Command } from "commander";
-import { execSync, spawnSync } from "child_process";
+import { execSync, spawnSync, SpawnSyncReturns } from "child_process";
 import { tsconfig } from "./tsconfig-template";
 import * as licenses from "./licenses";
+import defaults from "./defaults"
 
 const getNameFromGit = () => {
   let fullName = "";
@@ -23,30 +24,36 @@ const getNameFromGit = () => {
 
 const fullName = getNameFromGit();
 
-const template = {
-  "name": "",
-  "repository": "",
-  "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
+const template: Package = {
+  name: "",
+  repository: "",
+  version: "0.1.0",
+  description: "",
+  main: "index.js",
+  scripts: {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "Apache-2.0",
-  "devDependencies": {
+  keywords: [],
+  author: "",
+  license: "Apache-2.0",
+  devDependencies: {
   },
-  "dependencies": {
+  dependencies: {
   }
 }
 
 interface Package {
   name: string,
+  repository: string | { url: string, type: string },
+  version: string,
+  description: string,
+  main: string,
+  keywords: string[],
   license: string,
   dependencies: Opts,
   devDependencies: Opts,
-  author: string
+  author: string,
+  scripts: Opts
 }
 
 export interface Opts {
@@ -61,6 +68,7 @@ export interface Options {
   mobx: boolean,
   esVersion: "ES3" | "ES5" | "ES2015" | "ES2016" | "ES2017" | "ES2018" | "ES2019" | "ESNext",
   dryRun: boolean,
+  module: "commonjs" | "es2015",
   license: "Apache-2.0" | "BSD-2-Clause" | "BSD-3-Clause" | "MIT",
   licenseFn: (year: number, name: string) => string,
   args: string[]
@@ -80,6 +88,7 @@ export const parseArgs = (args: Command) => {
     mobx: false,
     esVersion: "ES2015",
     dryRun: false,
+    module: "commonjs",
     license: "Apache-2.0",
     licenseFn: licenses.APACHE_LICENSE,
     args: args.args
@@ -117,7 +126,8 @@ export const parseArgs = (args: Command) => {
   }
 
   if (args.react) {
-    opts.react = true
+    opts.react = true;
+    opts.module = "es2015";
   }
 
   if (args.parcel) {
@@ -135,19 +145,10 @@ export const parseArgs = (args: Command) => {
   return opts;
 }
 
-type DepType = keyof Package;
+type DepType = "dependencies" | "devDependencies";
 
-/**
- * Higher order function that allows editing of a representation of a package.json file
- * 
- * @param type 
- * @param deps 
- */
-export const setDependency = (type: DepType, deps: string[]) => (pkg: Package = template) => {
-  console.log(`Adding ${deps} to ${type}`);
-  let cmd = spawnSync("npm", ["install", "--dry-run", ...deps]);
-
-  cmd.stdout.toString()
+const parseNPMInstall = (cmd: SpawnSyncReturns<Buffer>, pkg: Package, type: DepType) => {
+  cmd.stdout.toString("utf-8")
     .split("\n")
     .filter((line) => line.startsWith("+"))
     .map(line => {
@@ -168,7 +169,60 @@ export const setDependency = (type: DepType, deps: string[]) => (pkg: Package = 
         }
       }
     });
+  return pkg;
+}
+
+/**
+ * Higher order function that allows editing of a representation of a package.json file
+ * 
+ * @param type 
+ * @param deps 
+ */
+export const setDependency = (type: DepType, deps: string[]) => (pkg: Package = template) => {
+  console.log(`Adding ${deps} to ${type}`);
+  let cmd = spawnSync("npm", ["install", "--dry-run", ...deps]);
+
+  //pkg = parseNPMInstall(cmd, pkg, type);
   return pkg
+}
+
+export const setDep = (type: DepType, deps: string[], opts: Options) => (pkg: Package = template) => {
+  let cwd = process.cwd();
+  let name = opts.args[0];
+  let args = ["install"];
+
+  if (opts.dryRun) {
+    args = args.concat("--dry-run");
+  } else {
+    cwd = `${cwd}/${name}`;
+  }
+
+  if (type === "devDependencies") {
+    args = args.concat(["--save-dev"]);
+  }
+
+  args = args.concat([...deps]);
+
+  console.log(`Adding ${deps} to ${type}`);
+  let cmd = spawnSync("npm", args, { cwd });
+
+  if (cmd.status !== 0) {
+    throw new Error(`Failed to npm install: ${cmd.stderr}`)
+  }
+
+  if (opts.dryRun) {
+    return parseNPMInstall(cmd, pkg, type);
+  }
+
+  let pkgJsonFile = `${cwd}/package.json`;
+  if (!fs.existsSync(pkgJsonFile)) {
+    throw new Error(`${pkgJsonFile} does not exist. Error creating package.json file`);
+  }
+  let pkgjson = fs.readFileSync(pkgJsonFile).toString("utf-8");
+
+  pkg = JSON.parse(pkgjson);
+
+  return pkg;
 }
 
 /**
@@ -179,6 +233,16 @@ export const setDependency = (type: DepType, deps: string[]) => (pkg: Package = 
 export const setLicense = (license: string) => (pkg: Package) => {
   pkg.license = license;
   return pkg
+}
+
+const writePackageJsonScripts = (base: string, keyvals: [string, string][]) => {
+  console.log(`path is ${base}/package.json`);
+  let pkg = JSON.parse(fs.readFileSync(`${base}/package.json`).toString("utf-8")) as Package;
+  keyvals.forEach(([key, val]) => {
+    pkg.scripts[key] = val;
+  });
+
+  fs.writeFileSync(`${base}/package.json`, JSON.stringify(pkg, null, 2));
 }
 
 /**
@@ -193,11 +257,12 @@ export const setWeb = (opts: Options) => (pkg: Package) => {
 
   let deps = ["react", "react-dom", "react-router"];
   let devDeps = ["@types/react", "@types/react-dom", "@types/react-router"];
+  let scripts: [string, string][];
 
   if (opts.parcel) {
-    devDeps = devDeps.concat(["parcel"])
+    devDeps = devDeps.concat(["parcel-bundler"]);
   } else {
-    devDeps = devDeps.concat(["webpack"])
+    devDeps = devDeps.concat(["webpack", "webpack-cli", "webpack-dev-server", "copy-webpack-plugin"]);
   }
 
   if (opts.mobx) {
@@ -205,8 +270,9 @@ export const setWeb = (opts: Options) => (pkg: Package) => {
   } else {
     deps = deps.concat(["redux"])
   }
-  pkg = setDependency("dependencies", deps)(pkg);
-  pkg = setDependency("devDependencies", devDeps)(pkg);
+  pkg = setDep("dependencies", deps, opts)(pkg);
+  pkg = setDep("devDependencies", devDeps, opts)(pkg);
+
   return pkg
 }
 
@@ -214,16 +280,38 @@ export const setWeb = (opts: Options) => (pkg: Package) => {
  * This function generates the package.json based on the options passed in
  */
 const setPackageJson = (opts: Options, pkgjson: Package) => {
-  let pkg = setDependency("devDependencies", ["typescript", "tslint", "ava"])(pkgjson);
-  pkg = setWeb(opts)(pkg);
-  pkg = setLicense(opts.license)(pkg);
+  if (!opts.dryRun) {
+    let name = opts.args[0];
+    let writer = writeFile(name);
+    pkgjson.author = fullName;
+    pkgjson.name = name;
+
+    if (opts.parcel) {
+      pkgjson.scripts = Object.assign({
+        build: "parcel .//index.html",
+        serve: "parcel build ./dist/index.html"
+      }, pkgjson.scripts)
+    } else {
+      pkgjson.scripts = Object.assign({
+        build: "tsc && webpack --mode production",
+        serve: "tsc && webpack-dev-server --mode development --open"
+      }, pkgjson.scripts)
+    }
+
+    makeDirs(name);
+    writer(`package.json`, pkgjson);
+  }
+
+  let pkg = setDep("devDependencies", ["typescript", "tslint", "ava"], opts)(pkgjson);
   pkg.name = opts.args[0];
   pkg.author = fullName;
+  pkg = setWeb(opts)(pkg);
+  pkg = setLicense(opts.license)(pkg);
 
   if (opts.dep.length > 0)
-    pkg = setDependency("dependencies", opts.dep)(pkg);
+    pkg = setDep("dependencies", opts.dep, opts)(pkg);
   if (opts.devDep.length > 0)
-    pkg = setDependency("devDependencies", opts.devDep)(pkg);
+    pkg = setDep("devDependencies", opts.devDep, opts)(pkg);
 
   return pkg
 }
@@ -272,7 +360,44 @@ const writeLicense = (project: string, fn: (year: number, name: string) => strin
 }
 
 const setTSConfig = (opts: Options) => {
-  tsconfig.compilerConfig.target = opts.esVersion;
+  tsconfig.compilerOptions.target = opts.esVersion;
+  
+  if (opts.react) {
+    tsconfig.compilerOptions.module = opts.module;
+  }
+  return tsconfig;
+}
+
+export const getWebPackTemplate = () => {
+  let file = fs.readFileSync(`${__dirname}/webconfig-template.js`);
+  return file;
+}
+
+const makeDirs = (name: string) => {
+  console.log("Creating folders")
+  fs.mkdirSync(name);
+  fs.mkdirSync(`${name}/src`);
+  fs.mkdirSync(`${name}/dist`);
+  fs.mkdirSync(`${name}/test`);
+}
+
+const checkFolder = (basePath: string) => {
+  if (!fs.existsSync(basePath)) {
+    fs.mkdirSync(basePath);
+  }
+}
+
+const makeIndexHtml = (name: string) => {
+  let basePath = `${name}/static`;
+  checkFolder(basePath);
+  let indexHtmlPath = `${basePath}/index.html`
+  fs.writeFileSync(indexHtmlPath, defaults.indexHtml);
+}
+
+const makeDefaultApp = (base: string) => {
+  checkFolder(`${base}/src`);
+  let writer = writeFile(`${base}/src`);
+  writer("app.tsx", defaults.helloWorld);
 }
 
 /**
@@ -287,22 +412,31 @@ export const start = (args: Command, pkgjson: Package = template) => {
   console.log("Setting up package.json file");
   let pkg = setPackageJson(opts, pkgjson);
 
+  let tsCfg = setTSConfig(opts);
   if (opts.dryRun) {
     console.log(JSON.stringify(pkg, null, 2));
+    console.log(JSON.stringify(tsCfg, null, 2));
     return;
   }
 
-  console.log("Creating folders")
-  fs.mkdirSync(pkg.name);
-  fs.mkdirSync(`${pkg.name}/src`);
-  fs.mkdirSync(`${pkg.name}/dist`);
-  fs.mkdirSync(`${pkg.name}/test`);
+  console.log(`pkg is now ${JSON.stringify(pkg, null, 2)}`);
 
   let writer = writeFile(pkg.name);
-  console.log("Writing package.json");
-  writer("package.json", pkg);
   console.log("Writing tsconfig.json");
-  writer("tsconfig.json", tsconfig);
+  writer("tsconfig.json", setTSConfig(opts));
+
+  if (opts.react) {
+    console.log("Writing default index.html file");
+    makeIndexHtml(pkg.name);
+    console.log("Writing default app.tsx file");
+    makeDefaultApp(pkg.name);
+  }
+  
+  if (!opts.parcel) {
+    console.log("Writing webpack.config.js");
+    let config = getWebPackTemplate();
+    fs.writeFileSync(`${pkg.name}/webpack.config.js`, config);
+  }
 
   makeGitIgnore(pkg.name);
   console.log("Writing LICENSE");

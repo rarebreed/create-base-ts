@@ -1,5 +1,5 @@
 export const tsconfig = {
-    compilerConfig: {
+    compilerOptions: {
         /* Basic Options */
         // "incremental": true,                   /* Enable incremental compilation */
         target: "es2017",                          /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019' or 'ESNEXT'. */
@@ -12,8 +12,8 @@ export const tsconfig = {
         // "declarationMap": true,                /* Generates a sourcemap for each corresponding '.d.ts' file. */
         // "sourceMap": true,                     /* Generates corresponding '.map' file. */
         // "outFile": "./",                       /* Concatenate and emit output to single file. */
-        outDir: "./dist",                        /* Redirect output structure to the directory. */
-        // "rootDir": "./",                       /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */
+        outDir: "./build",                        /* Redirect output structure to the directory. */
+        rootDir: "./src",                       /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */
         // "composite": true,                     /* Enable project compilation */
         // "tsBuildInfoFile": "./",               /* Specify file to store incremental compilation information */
         // "removeComments": true,                /* Do not emit comments to output. */
@@ -64,7 +64,8 @@ export const tsconfig = {
         //forceConsistentCasingInFileNames: true  /* Disallow inconsistently-cased references to the same file. */
     },
     include: [
-        "src/**/*"
+        "**/*.ts",
+        "**/*.tsx"
     ],
     exclude: [
         "node_modules"
