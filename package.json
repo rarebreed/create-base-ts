@@ -4,7 +4,7 @@
     "type": "git",
     "url": "https://github.com/rarebreed/create-base-ts"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "bin": "./dist/main.js",
   "description": "",
   "main": "./dist/main.js",
