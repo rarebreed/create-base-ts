@@ -304,8 +304,8 @@ const setPackageJson = (opts: Options, pkgjson: Package) => {
 
     if (opts.parcel) {
       pkgjson.scripts = Object.assign({
-        build: "parcel ./build/index.html",
-        serve: "parcel build ./build/index.html",
+        serve: "parcel ./build/index.html",
+        build: "parcel build ./build/index.html",
         clean: "rimraf dist build"
       }, pkgjson.scripts)
     } else if (opts.react) {
@@ -420,6 +420,11 @@ const makeDefaultApp = (base: string) => {
 
 /**
  * This is the "main" function that scaffolds the project
+ * 
+ * FIXME:  This is sort of a mess.  Let's turn this into a functional pipeline with the following 
+ * "stages":
+ * 
+ * - 
  * 
  * @param args 
  * @param pkgjson 

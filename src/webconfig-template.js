@@ -6,7 +6,7 @@ const dist = path.resolve(__dirname, "dist");
 module.exports = {
   mode: "production",
   entry: {
-    index: "./build/app.js"
+    index: "./src/app.tsx"
   },
   output: {
     path: dist,
@@ -15,24 +15,9 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.scss$/,
-        use: [
-          MiniCssExtractPlugin.loader,
-          {
-            loader: 'css-loader'
-          },
-          {
-            loader: 'sass-loader',
-            options: {
-              sourceMap: true,
-              // options...
-            }
-          }
-        ]
-      },
-      {
         test: /\.tsx?$/,
-        use: "ts-loader"
+        use: "ts-loader",
+        exclude: /node_modules/
       }
     ]
   },
@@ -42,9 +27,6 @@ module.exports = {
   plugins: [
     new CopyPlugin([
       path.resolve(__dirname, "static")
-    ]),
-    new MiniCssExtractPlugin({
-      filename: 'css/mystyles.css'
-    })
+    ])
   ]
 };
